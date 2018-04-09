@@ -96,17 +96,17 @@ def interleave_fastq(fwd_fp, rev_fp, comb_fp):
     nreads = 0
     with open(comb_fp, "wt") as fo:
         while True:
-            fwd_read = fwd.readlines(4)
-            rev_read = rev.readlines(4)
-            if fwd_read is None:
+            fwd_read = [fwd.readline() for ix in range(4)]
+            rev_read = [rev.readline() for ix in range(4)]
+            if any([l == '' for l in fwd_read]):
                 break
-            assert rev_read is not None
+            assert any([l == '' for l in rev_read]) is False
             nreads += 1
-            fo.write(fwd_read)
-            fo.write(rev_read)
+            fo.write(''.join(fwd_read))
+            fo.write(''.join(rev_read))
     fwd.close()
     rev.close()
-    logging.info("Interleaved {:,} pairs of reads")
+    logging.info("Interleaved {:,} pairs of reads".format(nreads))
 
 
 def get_sra(accession, temp_folder):
@@ -236,12 +236,12 @@ if __name__ == "__main__":
 
     # Upload FASTQ to S3 folder
     try:
-        run_cmds(["aws", "s3", "cp", local_fp, args.output_folder])
+        run_cmds(["aws", "s3", "cp", "--sse", "AES256", local_fp, args.output_folder])
     except:
         exit_and_clean_up(temp_folder)
 
     # Upload logs to S3 folder
     try:
-        run_cmds(["aws", "s3", "cp", log_fp, args.output_folder])
+        run_cmds(["aws", "s3", "cp", "--sse", "AES256", log_fp, args.output_folder])
     except:
         exit_and_clean_up(temp_folder)

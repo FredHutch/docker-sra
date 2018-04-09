@@ -7,7 +7,7 @@ WORKDIR /share
 
 # Install prerequisites
 RUN apt update && \
-    apt-get install -y build-essential wget unzip python3.6 awscli pigz
+    apt-get install -y build-essential wget unzip python3 awscli pigz
 
 # Set the default langage to C
 ENV LC_ALL C
