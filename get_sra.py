@@ -233,3 +233,7 @@ if __name__ == "__main__":
             run_cmds(["mv", log_fp, args.output_folder])
         except:
             exit_and_clean_up(temp_folder)
+    
+    # Delete any files that were created for this sample
+    logging.info("Removing temporary folder: " + temp_folder)
+    shutil.rmtree(temp_folder)
