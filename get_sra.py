@@ -124,7 +124,7 @@ def get_sra(accession, temp_folder):
     # Convert into a single interleaved FASTQ file
     run_cmds([
         "fastq-dump", "--split-files", 
-        "--defline-seq", "'@$ac.$si.$sg/$ri'", 
+        "--defline-seq", "@$ac.$si.$sg/$ri", 
         "--defline-qual", "'+'", "-Z", accession
     ],
         stdout=local_path
