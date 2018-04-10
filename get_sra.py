@@ -121,50 +121,20 @@ def get_sra(accession, temp_folder):
     run_cmds([
         "prefetch", accession
     ])
+    # Convert into a single interleaved FASTQ file
     run_cmds([
-        "fastq-dump",
-        "--split-files",
-        "--outdir",
-        temp_folder, accession
-    ])
-
-    # Make sure that some files were created
-    msg = "File could not be downloaded from SRA: {}".format(accession)
-    assert any([
-        fp.startswith(accession) and fp.endswith("fastq")
-        for fp in os.listdir(temp_folder)
-    ]), msg
-
-    # If a forward and reverse set of reads were found, interleave them
-    fwd_fp = "{}/{}_1.fastq".format(temp_folder, accession)
-    rev_fp = "{}/{}_2.fastq".format(temp_folder, accession)
-    if os.path.exists(fwd_fp) and os.path.exists(rev_fp):
-        logging.info("Interleaving forward and reverse reads")
-        interleave_fastq(fwd_fp, rev_fp, local_path + ".temp")
-    else:
-
-        # Combine any multiple files that were found
-        logging.info("Concatenating output files")
-        with open(local_path + ".temp", "wt") as fo:
-            cmd = "cat {}/{}*fastq".format(temp_folder, accession)
-            cat = subprocess.Popen(cmd, shell=True, stdout=fo)
-            cat.wait()
-
-    # Remove the temp files
-    for fp in os.listdir(temp_folder):
-        if fp.startswith(accession) and fp.endswith("fastq"):
-            fp = os.path.join(temp_folder, fp)
-            logging.info("Removing {}".format(fp))
-            os.unlink(fp)
+        "fastq-dump", "--split-files", 
+        "--defline-seq", "'@$ac.$si.$sg/$ri'", 
+        "--defline-qual", "'+'", "-Z", accession
+    ],
+        stdout=local_path
+    )
 
     # Remove the cache file, if any
     cache_fp = "/root/ncbi/public/sra/{}.sra".format(accession)
     if os.path.exists(cache_fp):
         logging.info("Removing {}".format(cache_fp))
         os.unlink(cache_fp)
-
-    # Clean up the FASTQ headers for the downloaded file
-    run_cmds(["mv", local_path + ".temp", local_path])
 
     # Compress the FASTQ file
     logging.info("Compress the FASTQ file")
@@ -195,8 +165,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Make sure the output is an S3 folder
-    assert args.output_folder.startswith("s3://")
+    # If the output folder is not S3, make sure it exists locally
+    if args.output_folder.startswith("s3://") is False:
+        assert os.path.exists(args.output_folder), "Output folder does not exist"
+
+    # Make sure the output folder ends with a "/"
     if args.output_folder.endswith("/") is False:
         args.output_folder = args.output_folder + "/"
 
@@ -234,14 +207,29 @@ if __name__ == "__main__":
     except:
         exit_and_clean_up(temp_folder)
 
-    # Upload FASTQ to S3 folder
-    try:
-        run_cmds(["aws", "s3", "cp", "--sse", "AES256", local_fp, args.output_folder])
-    except:
-        exit_and_clean_up(temp_folder)
+    if args.output_folder.startswith("s3://"):
+        # Upload FASTQ to S3 folder
+        try:
+            run_cmds(["aws", "s3", "cp", "--sse", "AES256",
+                      local_fp, args.output_folder])
+        except:
+            exit_and_clean_up(temp_folder)
 
-    # Upload logs to S3 folder
-    try:
-        run_cmds(["aws", "s3", "cp", "--sse", "AES256", log_fp, args.output_folder])
-    except:
-        exit_and_clean_up(temp_folder)
+        # Upload logs to S3 folder
+        try:
+            run_cmds(["aws", "s3", "cp", "--sse",
+                      "AES256", log_fp, args.output_folder])
+        except:
+            exit_and_clean_up(temp_folder)
+    else:
+        # Move FASTQ to local folder
+        try:
+            run_cmds(["mv", local_fp, args.output_folder])
+        except:
+            exit_and_clean_up(temp_folder)
+
+        # Move logs to local folder
+        try:
+            run_cmds(["mv", log_fp, args.output_folder])
+        except:
+            exit_and_clean_up(temp_folder)
