@@ -121,14 +121,37 @@ def get_sra(accession, temp_folder):
     run_cmds([
         "prefetch", accession
     ])
-    # Convert into a single interleaved FASTQ file
+    # Output the _1.fastq and _2.fastq files
     run_cmds([
         "fastq-dump", "--split-files", 
         "--defline-seq", "@$ac.$si.$sg/$ri", 
-        "--defline-qual", "+", "-Z", accession
-    ],
-        stdout=local_path
-    )
+        "--defline-qual", "+", 
+        "--outdir", temp_folder, accession
+    ])
+    r1 = os.path.join(temp_folder, accession + "_1.fastq")
+    r2 = os.path.join(temp_folder, accession + "_2.fastq")
+    r1_paired = os.path.join(temp_folder, accession + "_1.fastq.paired.fq")
+    r2_paired = os.path.join(temp_folder, accession + "_2.fastq.paired.fq")
+    assert os.path.exists(r1)
+    assert os.path.exists(r2)
+
+    # Isolate the properly paired filed
+    run_cmds([
+        "fastq_pair", r1, r2
+    ])
+    assert os.path.exists(r1_paired)
+    assert os.path.exists(r2_paired)
+    logging.info("Removing raw downloaded FASTQ files")
+    os.remove(r1)
+    os.remove(r2)
+
+    # Interleave the two paired files
+    logging.info("Interleaving the paired FASTQ files")
+    interleave_fastq(r1_paired, r2_paired, local_path)
+    assert os.path.exists(local_path)
+    logging.info("Removing split and filtered FASTQ files")
+    os.remove(r1_paired)
+    os.remove(r2_paired)
 
     # Remove the cache file, if any
     cache_fp = "/root/ncbi/public/sra/{}.sra".format(accession)
