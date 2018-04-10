@@ -125,7 +125,7 @@ def get_sra(accession, temp_folder):
     run_cmds([
         "fastq-dump", "--split-files", 
         "--defline-seq", "@$ac.$si.$sg/$ri", 
-        "--defline-qual", "'+'", "-Z", accession
+        "--defline-qual", "+", "-Z", accession
     ],
         stdout=local_path
     )
