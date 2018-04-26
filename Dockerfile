@@ -38,3 +38,4 @@ RUN cd /usr/local && \
 
 # Add the run script to the PATH
 ADD get_sra.py /usr/local/bin/
+ADD bucket_command_wrapper.py /usr/local/bin/
