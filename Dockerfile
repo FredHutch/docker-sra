@@ -44,5 +44,5 @@ RUN mkdir /mnt/inputs && mkdir /mnt/outputs
 RUN apt-get install -y python3-pip
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN pip3 install boto3 awscli
-RUN wget https://raw.githubusercontent.com/jgolob/sciluigi/containertask/tools/bucket_command_wrapper.py
-RUN chmod +x bucket_command_wrapper.py && cp bucket_command_wrapper.py /usr/bin/
+=======
+ADD bucket_command_wrapper.py /usr/local/bin/
