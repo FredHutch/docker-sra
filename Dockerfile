@@ -38,3 +38,11 @@ RUN cd /usr/local && \
 
 # Add the run script to the PATH
 ADD get_sra.py /usr/local/bin/
+
+# scliluig-containertask prereqs
+RUN mkdir /mnt/inputs && mkdir /mnt/outputs
+RUN apt-get install -y python3-pip
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN pip3 install boto3 awscli
+RUN wget https://raw.githubusercontent.com/jgolob/sciluigi/containertask/tools/bucket_command_wrapper.py
+RUN chmod +x bucket_command_wrapper.py && cp bucket_command_wrapper.py /usr/bin/
