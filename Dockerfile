@@ -43,5 +43,4 @@ ADD get_sra.py /usr/local/bin/
 RUN mkdir /mnt/inputs && mkdir /mnt/outputs
 RUN apt-get install -y python3-pip
 RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN pip3 install boto3 awscli
-ADD bucket_command_wrapper.py /usr/local/bin/
+RUN pip3 install bucket_command_wrapper==0.1.0 
