@@ -130,28 +130,34 @@ def get_sra(accession, temp_folder):
     ])
     r1 = os.path.join(temp_folder, accession + "_1.fastq")
     r2 = os.path.join(temp_folder, accession + "_2.fastq")
-    r1_paired = os.path.join(temp_folder, accession + "_1.fastq.paired.fq")
-    r2_paired = os.path.join(temp_folder, accession + "_2.fastq.paired.fq")
     assert os.path.exists(r1)
-    assert os.path.exists(r2)
 
-    # Isolate the properly paired filed
-    run_cmds([
-        "fastq_pair", r1, r2
-    ])
-    assert os.path.exists(r1_paired)
-    assert os.path.exists(r2_paired)
-    logging.info("Removing raw downloaded FASTQ files")
-    os.remove(r1)
-    os.remove(r2)
+    # If there are two reads created, interleave them
+    if os.path.exists(r2):
+        r1_paired = os.path.join(temp_folder, accession + "_1.fastq.paired.fq")
+        r2_paired = os.path.join(temp_folder, accession + "_2.fastq.paired.fq")
 
-    # Interleave the two paired files
-    logging.info("Interleaving the paired FASTQ files")
-    interleave_fastq(r1_paired, r2_paired, local_path)
-    assert os.path.exists(local_path)
-    logging.info("Removing split and filtered FASTQ files")
-    os.remove(r1_paired)
-    os.remove(r2_paired)
+        # Isolate the properly paired filed
+        run_cmds([
+            "fastq_pair", r1, r2
+        ])
+        assert os.path.exists(r1_paired)
+        assert os.path.exists(r2_paired)
+        logging.info("Removing raw downloaded FASTQ files")
+        os.remove(r1)
+        os.remove(r2)
+
+        # Interleave the two paired files
+        logging.info("Interleaving the paired FASTQ files")
+        interleave_fastq(r1_paired, r2_paired, local_path)
+        assert os.path.exists(local_path)
+        logging.info("Removing split and filtered FASTQ files")
+        os.remove(r1_paired)
+        os.remove(r2_paired)
+    else:
+        # Otherwise, just make the _1.fastq file the output
+        logging.info("Using {} as the output file".format(r1))
+        run_cmds(["mv", r1, local_fp])
 
     # Remove the cache file, if any
     cache_fp = "/root/ncbi/public/sra/{}.sra".format(accession)
