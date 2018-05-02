@@ -5,6 +5,9 @@ MAINTAINER sminot@fredhutch.org
 RUN mkdir /share
 WORKDIR /share
 
+# Add /scratch
+RUN mkdir /scratch
+
 # Install prerequisites
 RUN apt update && \
     apt-get install -y build-essential wget unzip python3 awscli pigz git
