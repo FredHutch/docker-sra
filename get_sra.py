@@ -157,7 +157,7 @@ def get_sra(accession, temp_folder):
     else:
         # Otherwise, just make the _1.fastq file the output
         logging.info("Using {} as the output file".format(r1))
-        run_cmds(["mv", r1, local_fp])
+        run_cmds(["mv", r1, local_path])
 
     # Remove the cache file, if any
     cache_fp = "/root/ncbi/public/sra/{}.sra".format(accession)
