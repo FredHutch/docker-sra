@@ -183,10 +183,10 @@ if __name__ == "__main__":
                         type=str,
                         required=True,
                         help="""SRA accession to download.""")
-    parser.add_argument("--output-folder",
+    parser.add_argument("--output-path",
                         type=str,
                         required=True,
-                        help="""S3 folder (key) to upload (interleaved) FASTQ.""")
+                        help="""S3 path (key) to upload (interleaved) FASTQ [.fastq.gz].""")
     parser.add_argument("--temp-folder",
                         type=str,
                         default='/share',
@@ -194,13 +194,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # If the output folder is not S3, make sure it exists locally
-    if args.output_folder.startswith("s3://") is False:
-        assert os.path.exists(args.output_folder), "Output folder does not exist"
+    # Make sure that the output path ends with .fastq.gz
+    assert args.output_path.endswith(".fastq.gz")
 
-    # Make sure the output folder ends with a "/"
-    if args.output_folder.endswith("/") is False:
-        args.output_folder = args.output_folder + "/"
+    # If the output folder is not S3, make sure it exists locally
+    if args.output_path.startswith("s3://") is False:
+        output_folder = "/".join(args.output_path.split("/")[:-1])
+        assert os.path.exists(output_folder), "Output folder does not exist"
 
     # Make a temporary folder for all files to be placed in
     temp_folder = os.path.join(args.temp_folder, str(uuid.uuid4())[:8])
@@ -236,30 +236,30 @@ if __name__ == "__main__":
     except:
         exit_and_clean_up(temp_folder)
 
-    if args.output_folder.startswith("s3://"):
+    if args.output_path.startswith("s3://"):
         # Upload FASTQ to S3 folder
         try:
             run_cmds(["aws", "s3", "cp", "--sse", "AES256",
-                      local_fp, args.output_folder])
+                      local_fp, args.output_path])
         except:
             exit_and_clean_up(temp_folder)
 
         # Upload logs to S3 folder
         try:
             run_cmds(["aws", "s3", "cp", "--sse",
-                      "AES256", log_fp, args.output_folder])
+                      "AES256", log_fp, args.output_path.replace(".fastq.gz", ".log")])
         except:
             exit_and_clean_up(temp_folder)
     else:
         # Move FASTQ to local folder
         try:
-            run_cmds(["mv", local_fp, args.output_folder])
+            run_cmds(["mv", local_fp, args.output_path])
         except:
             exit_and_clean_up(temp_folder)
 
         # Move logs to local folder
         try:
-            run_cmds(["mv", log_fp, args.output_folder])
+            run_cmds(["mv", log_fp, args.output_path.replace(".fastq.gz", ".log")])
         except:
             exit_and_clean_up(temp_folder)
     
