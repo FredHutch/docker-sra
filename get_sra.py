@@ -109,61 +109,71 @@ def interleave_fastq(fwd_fp, rev_fp, comb_fp):
     logging.info("Interleaved {:,} pairs of reads".format(nreads))
 
 
-def get_sra(accession, temp_folder):
+def get_sra(accession_string, temp_folder):
     """Get the FASTQ for an SRA accession."""
-    logging.info("Downloading {} from SRA".format(accession))
+    logging.info("Downloading {} from SRA".format(accession_string))
 
-    local_path = os.path.join(temp_folder, accession + ".fastq")
+    local_path = os.path.join(temp_folder, "reads.fastq")
     logging.info("Local path: {}".format(local_path))
 
     # Download via fastq-dump
-    logging.info("Downloading via fastq-dump")
-    run_cmds([
-        "prefetch", accession
-    ])
-    # Output the _1.fastq and _2.fastq files
-    run_cmds([
-        "fastq-dump", "--split-files", 
-        "--defline-seq", "@$ac.$si.$sg/$ri", 
-        "--defline-qual", "+", 
-        "--outdir", temp_folder, accession
-    ])
-    r1 = os.path.join(temp_folder, accession + "_1.fastq")
-    r2 = os.path.join(temp_folder, accession + "_2.fastq")
-    assert os.path.exists(r1)
+    for accession in accession_string.split(","):
+        logging.info("Downloading {} via fastq-dump".format(accession))
 
-    # If there are two reads created, interleave them
-    if os.path.exists(r2):
-        r1_paired = os.path.join(temp_folder, accession + "_1.fastq.paired.fq")
-        r2_paired = os.path.join(temp_folder, accession + "_2.fastq.paired.fq")
+        accession_joined_fp = os.path.join(temp_folder, accession + ".all.fastq")
 
-        # Isolate the properly paired filed
         run_cmds([
-            "fastq_pair", r1, r2
+            "prefetch", accession
         ])
-        assert os.path.exists(r1_paired)
-        assert os.path.exists(r2_paired)
-        logging.info("Removing raw downloaded FASTQ files")
-        os.remove(r1)
-        os.remove(r2)
+        # Output the _1.fastq and _2.fastq files
+        run_cmds([
+            "fastq-dump", "--split-files", 
+            "--defline-seq", "@$ac.$si.$sg/$ri", 
+            "--defline-qual", "+", 
+            "--outdir", temp_folder, accession
+        ])
+        r1 = os.path.join(temp_folder, accession + "_1.fastq")
+        r2 = os.path.join(temp_folder, accession + "_2.fastq")
+        assert os.path.exists(r1)
 
-        # Interleave the two paired files
-        logging.info("Interleaving the paired FASTQ files")
-        interleave_fastq(r1_paired, r2_paired, local_path)
-        assert os.path.exists(local_path)
-        logging.info("Removing split and filtered FASTQ files")
-        os.remove(r1_paired)
-        os.remove(r2_paired)
-    else:
-        # Otherwise, just make the _1.fastq file the output
-        logging.info("Using {} as the output file".format(r1))
-        run_cmds(["mv", r1, local_path])
+        # If there are two reads created, interleave them
+        if os.path.exists(r2):
+            r1_paired = os.path.join(temp_folder, accession + "_1.fastq.paired.fq")
+            r2_paired = os.path.join(temp_folder, accession + "_2.fastq.paired.fq")
 
-    # Remove the cache file, if any
-    cache_fp = "/root/ncbi/public/sra/{}.sra".format(accession)
-    if os.path.exists(cache_fp):
-        logging.info("Removing {}".format(cache_fp))
-        os.unlink(cache_fp)
+            # Isolate the properly paired filed
+            run_cmds([
+                "fastq_pair", r1, r2
+            ])
+            assert os.path.exists(r1_paired)
+            assert os.path.exists(r2_paired)
+            logging.info("Removing raw downloaded FASTQ files")
+            os.remove(r1)
+            os.remove(r2)
+
+            # Interleave the two paired files
+            logging.info("Interleaving the paired FASTQ files")
+            interleave_fastq(r1_paired, r2_paired, accession_joined_fp)
+            assert os.path.exists(accession_joined_fp)
+            logging.info("Removing split and filtered FASTQ files")
+            os.remove(r1_paired)
+            os.remove(r2_paired)
+        else:
+            # Otherwise, just make the _1.fastq file the output
+            logging.info("Using {} as the output file".format(r1))
+            run_cmds(["mv", r1, accession_joined_fp])
+
+        # Remove the cache file, if any
+        logging.info("Removing cached SRA files")
+        run_cmds(["find", temp_folder, "-name", "*.sra", "-delete"])
+
+        # Append this set of reads to the total
+        logging.info("Adding reads from {} to the total".format(accession))
+        with open(local_path, "at") as fo:
+            for line in open(accession_joined_fp, "rt"):
+                fo.write(line)
+        logging.info("Removing temporary file " + accession_joined_fp)
+        os.remove(accession_joined_fp)
 
     # Compress the FASTQ file
     logging.info("Compress the FASTQ file")
@@ -171,7 +181,7 @@ def get_sra(accession, temp_folder):
     local_path = local_path + ".gz"
 
     # Return the path to the file
-    logging.info("Done fetching " + accession)
+    logging.info("Done fetching " + accession_string)
     return local_path
 
 
@@ -182,7 +192,7 @@ if __name__ == "__main__":
     parser.add_argument("--accession",
                         type=str,
                         required=True,
-                        help="""SRA accession to download.""")
+                        help="""SRA accession to download (multiple comma-delimited accessions will be combined).""")
     parser.add_argument("--output-path",
                         type=str,
                         required=True,
@@ -208,7 +218,7 @@ if __name__ == "__main__":
     os.mkdir(temp_folder)
 
     # Set up logging
-    log_fp = os.path.join(temp_folder, args.accession + ".log")
+    log_fp = os.path.join(temp_folder, args.accession.replace(",", "_") + ".log")
     logFormatter = logging.Formatter(
         '%(asctime)s %(levelname)-8s [get_sra.py] %(message)s'
     )
