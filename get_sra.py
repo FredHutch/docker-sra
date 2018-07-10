@@ -69,25 +69,13 @@ def run_cmds(commands, retry=0, catchExcept=False, stdout=None):
 def set_up_sra_cache_folder(temp_folder):
     """Set up the fastq-dump cache folder within the temp folder."""
     logging.info("Setting up fastq-dump cache within {}".format(temp_folder))
-    for path in [
-        "/root/ncbi",
-        "/root/ncbi/public"
-    ]:
-        if os.path.exists(path) is False:
-            os.mkdir(path)
 
-    if os.path.exists("/root/ncbi/public/sra"):
-        shutil.rmtree("/root/ncbi/public/sra")
+    cache_folder = os.path.join(temp_folder, "sra_cache")
+    os.mkdir(cache_folder)
 
-    # Now make a folder within the temp folder
-    temp_cache = os.path.join(temp_folder, "sra")
-    assert os.path.exists(temp_cache) is False
-    os.mkdir(temp_cache)
-
-    # Symlink it to /root/ncbi/public/sra/
-    run_cmds(["ln", "-s", "-f", temp_cache, "/root/ncbi/public/sra"])
-
-    assert os.path.exists("/root/ncbi/public/sra")
+    run_cmds([
+        "vdb-config", "--root", "-s", "/repository/user/main/public/root={}".format(cache_folder)
+    ], catchExcept=True)
 
 
 def interleave_fastq(fwd_fp, rev_fp, comb_fp):
