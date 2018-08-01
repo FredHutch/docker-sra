@@ -206,7 +206,7 @@ if __name__ == "__main__":
     os.mkdir(temp_folder)
 
     # Set up logging
-    log_fp = os.path.join(temp_folder, args.accession.replace(",", "_") + ".log")
+    log_fp = os.path.join(temp_folder, args.accession.replace(",", "_")[:50] + ".log")
     logFormatter = logging.Formatter(
         '%(asctime)s %(levelname)-8s [get_sra.py] %(message)s'
     )
